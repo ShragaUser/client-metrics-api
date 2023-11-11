@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	allowedMetricTypes = "counter|gauge|" // add histogram and summary in the future if needed
+	allowedMetricTypes = "counter|gauge|summary|histogram"
 )
 
 func isAllowedMetricType(metricType string) bool {

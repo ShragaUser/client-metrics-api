@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
-	"github.com/penglongli/gin-metrics/ginmetrics"
+	"github.com/ShragaUser/gin-metrics/ginmetrics"
 )
 
 var singletonOnce sync.Once
@@ -38,7 +38,8 @@ func PostMetricHandler(c *gin.Context) {
 
 	slog.Info("received metric", "metric", body)
 
-	metric, err := createNewMetricOnce(body)
+	metricDef := getMetricFromRequestBody(body)
+	metric, err := createNewMetricOnce(metricDef)
 	if err != nil {
 		slog.Error("could not create metric", "err", err.Error())
 		c.String(500, "could not create metric")
@@ -52,17 +53,19 @@ func PostMetricHandler(c *gin.Context) {
 	}
 }
 
-func createNewMetricOnce(body ClientMetricsRequestBody) (metric *ginmetrics.Metric, err error) {
-	once, _ := customMetricsMap.LoadOrStore(body.MetricName, &sync.Once{})
+func getMetricFromRequestBody(body ClientMetricsRequestBody) *ginmetrics.Metric {
+	return &ginmetrics.Metric{
+		Type:   body.GetMetricType(),
+		Name:   body.MetricName,
+		Labels: body.MetricLabels,
+	}
+}
+
+func createNewMetricOnce(metricDef *ginmetrics.Metric) (newMetric *ginmetrics.Metric, err error) {
+	once, _ := customMetricsMap.LoadOrStore(metricDef.Name, &sync.Once{})
 	once.(*sync.Once).Do(
 		func() {
-			metric := &ginmetrics.Metric{
-				Type:   body.GetMetricType(),
-				Name:   body.MetricName,
-				Labels: body.MetricLabels,
-			}
-
-			if err = GetMonitor().AddMetric(metric); err != nil {
+			if err = GetMonitor().AddMetric(metricDef); err != nil {
 				slog.Error("could not add metric", "err", err.Error())
 				return
 			}
@@ -73,10 +76,10 @@ func createNewMetricOnce(body ClientMetricsRequestBody) (metric *ginmetrics.Metr
 		return nil, err
 	}
 
-	return GetMonitor().GetMetric(body.MetricName), nil
+	return GetMonitor().GetMetric(metricDef.Name), nil
 }
 
-func handleMetricByType(metric *ginmetrics.Metric, body ClientMetricsRequestBody) error {
+func handleCounterAndGauge(metric *ginmetrics.Metric, body ClientMetricsRequestBody) error {
 	incrementAmount := 1.0
 	if body.MetricValue != nil {
 		incrementAmount = *body.MetricValue
@@ -87,4 +90,31 @@ func handleMetricByType(metric *ginmetrics.Metric, body ClientMetricsRequestBody
 	}
 
 	return nil
+}
+
+func handleSummaryAndHistogram(metric *ginmetrics.Metric, body ClientMetricsRequestBody) error {
+	if body.MetricValue == nil {
+		return nil
+	}
+
+	if err := metric.Observe(body.MetricLabels, *body.MetricValue); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func handleMetricByType(metric *ginmetrics.Metric, body ClientMetricsRequestBody) error {
+	switch metric.Type {
+	case ginmetrics.Counter:
+		return handleCounterAndGauge(metric, body)
+	case ginmetrics.Gauge:
+		return handleCounterAndGauge(metric, body)
+	case ginmetrics.Summary:
+		return handleSummaryAndHistogram(metric, body)
+	case ginmetrics.Histogram:
+		return handleSummaryAndHistogram(metric, body)
+	default:
+		return nil
+	}
 }

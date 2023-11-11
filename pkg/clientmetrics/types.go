@@ -1,6 +1,6 @@
 package clientmetrics
 
-import "github.com/penglongli/gin-metrics/ginmetrics"
+import "github.com/ShragaUser/gin-metrics/ginmetrics"
 
 type ClientMetricsRequestBody struct {
 	MetricName   string   `json:"metricName"`
@@ -18,7 +18,11 @@ func (c *ClientMetricsRequestBody) Validate() bool {
 }
 
 func (c *ClientMetricsRequestBody) GetMetricType() ginmetrics.MetricType {
-	switch c.MetricType {
+	return getMetricType(c.MetricType)
+}
+
+func getMetricType(metricType string) ginmetrics.MetricType {
+	switch metricType {
 	case "counter":
 		return ginmetrics.Counter
 	case "gauge":
