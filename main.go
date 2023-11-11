@@ -2,6 +2,7 @@ package main
 
 import (
 	"clientmetrics/pkg/clientmetrics"
+	"clientmetrics/pkg/config"
 	"clientmetrics/pkg/server"
 	"log/slog"
 	"os"
@@ -12,6 +13,11 @@ import (
 
 func main() {
 	viper.AutomaticEnv()
+	cfg := config.GetConfig()
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: cfg.GetLogLevel(),
+	})))
+
 	if err := clientmetrics.Init(); err != nil {
 		slog.Error("could not initialize client metrics", "err", err.Error())
 		os.Exit(1)

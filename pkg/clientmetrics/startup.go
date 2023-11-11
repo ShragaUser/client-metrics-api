@@ -28,7 +28,7 @@ func Init() error {
 			Objectives:  inputMetric.Objectives,
 		}
 
-		slog.Info("creating metric", "metric", metric)
+		slog.Info("creating metric", "metric", metric.Name)
 
 		if _, err := createNewMetricOnce(metric); err != nil {
 			return err
