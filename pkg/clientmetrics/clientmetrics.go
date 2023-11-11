@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/gin-gonic/gin"
 	"github.com/ShragaUser/gin-metrics/ginmetrics"
+	"github.com/gin-gonic/gin"
 )
 
 var singletonOnce sync.Once
@@ -73,6 +73,7 @@ func createNewMetricOnce(metricDef *ginmetrics.Metric) (newMetric *ginmetrics.Me
 	)
 
 	if err != nil {
+		customMetricsMap.Delete(metricDef.Name)
 		return nil, err
 	}
 
