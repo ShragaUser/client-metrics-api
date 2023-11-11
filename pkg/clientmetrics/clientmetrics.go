@@ -31,8 +31,8 @@ func PostMetricHandler(c *gin.Context) {
 		return
 	}
 
-	if !body.Validate() {
-		c.String(400, "invalid metric")
+	if err := body.Validate(); err != nil {
+		c.String(400, err.Error())
 		return
 	}
 

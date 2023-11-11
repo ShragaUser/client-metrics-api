@@ -1,6 +1,10 @@
 package clientmetrics
 
-import "github.com/ShragaUser/gin-metrics/ginmetrics"
+import (
+	"fmt"
+
+	"github.com/ShragaUser/gin-metrics/ginmetrics"
+)
 
 type ClientMetricsRequestBody struct {
 	MetricName   string   `json:"metricName"`
@@ -9,12 +13,26 @@ type ClientMetricsRequestBody struct {
 	MetricLabels []string `json:"metricLabels,omitempty"`
 }
 
-func (c *ClientMetricsRequestBody) Validate() bool {
+func (c *ClientMetricsRequestBody) Validate() error {
 	if c.MetricName == "" || c.MetricType == "" {
-		return false
+		return fmt.Errorf("metric name and type are required")
 	}
 
-	return isAllowedMetricType(c.MetricType)
+	if c.GetMetricType() == ginmetrics.Summary || c.GetMetricType() == ginmetrics.Histogram {
+		if c.MetricValue == nil {
+			return fmt.Errorf("metric value is required for %s metric type", c.MetricType)
+		}
+
+		if GetMonitor().GetMetric(c.MetricName).Name != c.MetricName {
+			return fmt.Errorf("metric of type %s must pre-exist", c.MetricType)
+		}
+	}
+
+	if ok := isAllowedMetricType(c.MetricType); !ok {
+		return fmt.Errorf("metric type %s is not allowed", c.MetricType)
+	}
+
+	return nil
 }
 
 func (c *ClientMetricsRequestBody) GetMetricType() ginmetrics.MetricType {
